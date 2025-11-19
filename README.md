@@ -7,7 +7,7 @@ A decentralized savings contract built with Solidity that allows users to deposi
 - **User Deposits**: Anyone can deposit ETH (minimum 0.01 ETH)
 - **Automated Rewards**: Earn 1% APR on deposits
 - **Self-Sustaining**: Reward pool funded by 2% deposit fee (split 50/50 between rewards and owner profit)
-- **Time-Lock Protection**: 7-day minimum lock period before claiming rewards
+- **Time-Lock Protection**: 30-day minimum lock period before claiming rewards
 - **Fair Withdrawals**: Users can always withdraw their principal; rewards require lock period
 - **Protected Reward Pool**: Committed rewards cannot be withdrawn by owner
 - **Owner Management**: Owner can fund pool, adjust reward rates, and withdraw profits
@@ -25,11 +25,11 @@ A decentralized savings contract built with Solidity that allows users to deposi
 2. **Earn Rewards**
    - Rewards accrue continuously based on your deposit amount
    - Calculated as: `(deposit × 1% × time) / 1 year`
-   - After 7 days, you can claim or withdraw rewards
+   - After 30 days, you can claim or withdraw rewards
 
 3. **Withdraw**
    - Withdraw your deposit anytime (no lock)
-   - Withdraw rewards after 7-day lock period
+   - Withdraw rewards after 30-day lock period
    - Can withdraw deposit + rewards together
 
 ### For Owner
@@ -47,7 +47,7 @@ PiggyBank.sol
 ├── Constants
 │   ├── MIN_DEPOSIT_AMOUNT: 0.01 ETH
 │   ├── FEE_BASIS_POINTS: 200 (2%)
-│   └── MIN_LOCK_PERIOD: 7 days
+│   └── MIN_LOCK_PERIOD: 30 days
 ├── State Variables
 │   ├── owner
 │   ├── ownerBalance (owner's profit)
@@ -119,17 +119,18 @@ anvil
 
 2. **Deploy contract**
 ```bash
-forge script script/PiggyBankSetup.sol:PiggyBankScript \
+forge script script/PiggyBankScript.s.sol:PiggyBankScript \
   --rpc-url http://localhost:8545 \
   --broadcast
 ```
 
-3. **Fund reward pool (optional)**
+3. **Interact with contract**
 ```bash
-export PIGGY_BANK_ADDRESS=<deployed-address>
-export FUND_AMOUNT=5000000000000000000  # 5 ETH in wei
+# Set the deployed contract address
+export PIGGYBANK_ADDRESS=<deployed-address>
 
-forge script script/PiggyBankSetup.sol:FundRewardPoolScript \
+# Run interaction script (deposits 0.1 ETH)
+forge script script/InteractPiggyBank.s.sol:InteractPiggyBank \
   --rpc-url http://localhost:8545 \
   --broadcast
 ```
@@ -137,7 +138,7 @@ forge script script/PiggyBankSetup.sol:FundRewardPoolScript \
 ### Testnet Deployment (e.g., Sepolia)
 
 ```bash
-forge script script/PiggyBankSetup.sol:PiggyBankScript \
+forge script script/PiggyBankScript.s.sol:PiggyBankScript \
   --rpc-url $SEPOLIA_RPC_URL \
   --private-key $PRIVATE_KEY \
   --broadcast \
@@ -146,16 +147,30 @@ forge script script/PiggyBankSetup.sol:PiggyBankScript \
 
 ## Usage Examples 📝
 
+### Using the Interaction Script
+
+The easiest way to interact with your deployed contract:
+
+```bash
+# Set your deployed contract address
+export PIGGYBANK_ADDRESS=0x5FbDB2315678afecb367f032d93F642f64180aa3
+
+# Run the interaction script (modify it to suit your needs)
+forge script script/InteractPiggyBank.s.sol:InteractPiggyBank \
+  --rpc-url http://localhost:8545 \
+  --broadcast
+```
+
 ### Interact via Cast
 
 **Check minimum deposit**
 ```bash
-cast call <PIGGY_BANK_ADDRESS> "getMinDepositAmount()" --rpc-url <RPC_URL>
+cast call <PIGGYBANK_ADDRESS> "getMinDepositAmount()" --rpc-url <RPC_URL>
 ```
 
 **Deposit ETH**
 ```bash
-cast send <PIGGY_BANK_ADDRESS> "deposit()" \
+cast send <PIGGYBANK_ADDRESS> "deposit()" \
   --value 1ether \
   --private-key $PRIVATE_KEY \
   --rpc-url <RPC_URL>
@@ -163,7 +178,7 @@ cast send <PIGGY_BANK_ADDRESS> "deposit()" \
 
 **Check your balance**
 ```bash
-cast call <PIGGY_BANK_ADDRESS> \
+cast call <PIGGYBANK_ADDRESS> \
   "getUserBalance(address)(uint256,uint256)" \
   <YOUR_ADDRESS> \
   --rpc-url <RPC_URL>
@@ -171,16 +186,16 @@ cast call <PIGGY_BANK_ADDRESS> \
 
 **Withdraw funds**
 ```bash
-cast send <PIGGY_BANK_ADDRESS> \
+cast send <PIGGYBANK_ADDRESS> \
   "withdraw(uint256)" \
   500000000000000000 \
   --private-key $PRIVATE_KEY \
   --rpc-url <RPC_URL>
 ```
 
-**Claim rewards (after 7 days)**
+**Claim rewards (after 30 days)**
 ```bash
-cast send <PIGGY_BANK_ADDRESS> "claimRewards()" \
+cast send <PIGGYBANK_ADDRESS> "claimRewards()" \
   --private-key $PRIVATE_KEY \
   --rpc-url <RPC_URL>
 ```
@@ -189,7 +204,7 @@ cast send <PIGGY_BANK_ADDRESS> "claimRewards()" \
 
 **Fund reward pool**
 ```bash
-cast send <PIGGY_BANK_ADDRESS> "fundRewardPool()" \
+cast send <PIGGYBANK_ADDRESS> "fundRewardPool()" \
   --value 10ether \
   --private-key $OWNER_PRIVATE_KEY \
   --rpc-url <RPC_URL>
@@ -197,7 +212,7 @@ cast send <PIGGY_BANK_ADDRESS> "fundRewardPool()" \
 
 **Set reward rate to 2% APR**
 ```bash
-cast send <PIGGY_BANK_ADDRESS> \
+cast send <PIGGYBANK_ADDRESS> \
   "setRewardRate(uint256)" \
   200 \
   --private-key $OWNER_PRIVATE_KEY \
@@ -206,7 +221,7 @@ cast send <PIGGY_BANK_ADDRESS> \
 
 **Withdraw owner profits**
 ```bash
-cast send <PIGGY_BANK_ADDRESS> \
+cast send <PIGGYBANK_ADDRESS> \
   "withdraw(uint256)" \
   1000000000000000000 \
   --private-key $OWNER_PRIVATE_KEY \
@@ -215,7 +230,7 @@ cast send <PIGGY_BANK_ADDRESS> \
 
 ## Security Features 🔒
 
-1. **Minimum Lock Period**: Users cannot claim rewards until 7 days after first deposit
+1. **Minimum Lock Period**: Users cannot claim rewards until 30 days after first deposit
 2. **Protected Rewards**: Owner cannot withdraw committed user rewards
 3. **Separate Balances**: User deposits, owner balance, and reward pool tracked separately
 4. **Input Validation**: Minimum deposit amount, sufficient balance checks
@@ -229,7 +244,7 @@ cast send <PIGGY_BANK_ADDRESS> \
 |----------|-------------|--------|
 | `deposit()` | Deposit ETH (min 0.01 ETH, 2% fee) | Anyone |
 | `withdraw(uint256 amount)` | Withdraw deposit + rewards | Depositors |
-| `claimRewards()` | Claim earned rewards only | Depositors (after 7 days) |
+| `claimRewards()` | Claim earned rewards only | Depositors (after 30 days) |
 | `getUserBalance(address)` | View deposit and rewards | Anyone |
 | `calculateRewards(address)` | Calculate earned rewards | Anyone |
 | `canClaimRewards(address)` | Check if eligible to claim | Anyone |
@@ -248,7 +263,7 @@ cast send <PIGGY_BANK_ADDRESS> \
 |----------|---------|
 | `getBalance()` | Total contract balance |
 | `getMinDepositAmount()` | Minimum deposit (0.01 ETH) |
-| `getMinLockPeriod()` | Lock period in seconds (7 days) |
+| `getMinLockPeriod()` | Lock period in seconds (30 days) |
 | `owner()` | Contract owner address |
 | `rewardPool()` | Current reward pool balance |
 | `committedRewards()` | Total committed rewards |
