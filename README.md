@@ -295,6 +295,7 @@ forge test --match-test testDeposit
 
 ## Future Improvements 🚧
 
+- [ ] Add tests
 - [ ] Add events for all state changes
 - [ ] Implement emergency pause mechanism
 - [ ] Add compound interest option
