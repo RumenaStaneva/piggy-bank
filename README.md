@@ -93,7 +93,7 @@ With balanced 1% fee to pool and 1% reward rate:
 
 ### Install Dependencies
 ```bash
-git clone <your-repo-url>
+git clone <https://github.com/RumenaStaneva/piggy-bank.git>
 cd piggy-bank
 forge install
 ```
