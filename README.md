@@ -1,92 +1,145 @@
 # PiggyBank 🐷 (or you new fav pyramid scheme)
 
-A decentralized savings contract built with Solidity that allows users to deposit ETH, earn rewards over time, and withdraw their funds. The contract features a sustainable reward system funded by deposit fees, with built-in protections for fairness and security.
+A decentralized savings contract built with Solidity that lets users deposit ETH, earn rewards over time, and withdraw safely under predictable rules. Rewards are funded by deposit fees, making the system self-sustaining without inflation.
 
-## Features ✨
+This is a learning-oriented project — and yes, it started as something that looked like a pyramid scheme, but now it’s actually legit 😌
 
-- **User Deposits**: Anyone can deposit ETH (minimum 0.01 ETH)
-- **Automated Rewards**: Earn 1% APR on deposits
-- **Self-Sustaining**: Reward pool funded by 2% deposit fee (split 50/50 between rewards and owner profit)
-- **Time-Lock Protection**: 30-day minimum lock period before claiming rewards
-- **Fair Withdrawals**: Users can always withdraw their principal; rewards require lock period
-- **Protected Reward Pool**: Committed rewards cannot be withdrawn by owner
-- **Owner Management**: Owner can fund pool, adjust reward rates, and withdraw profits
+# Features ✨
+
+- **User Deposits:** Anyone can deposit ETH (minimum 0.01 ETH)
+- **Passive Rewards:** Earn APR on your deposit (default: 1%)
+- **Self-Funded Rewards:** Reward pool grows via a 2% fee on deposits  
+  - 1% → reward pool  
+  - 1% → owner (profit)
+- **Fair Withdrawals (Model B):**  
+  - Withdraw ≤ deposit → **only deposit is used**  
+  - Withdraw > deposit → **deposit + rewards used**  
+  - Rewards untouched unless needed
+- **30-Day Lock:** Rewards can only be withdrawn after 30 days
+- **No Reward Inflation:** Users stop earning new rewards after deposit becomes 0
+- **Clean Accounting:** Stored & fresh rewards handled separately
+- **Owner Functions:** Owner can fund reward pool, change APR, claim fees
 
 ## How It Works 🔄
 
-### For Users
+## For Users
 
-1. **Deposit**
-   - Send ETH to the contract (min 0.01 ETH)
-   - 2% fee is charged: 1% → reward pool, 1% → owner profit
-   - You receive 98% as your deposit balance
-   - Start earning 1% APR immediately
+### 1. Deposit ETH
+- Must be at least **0.01 ETH**
+- Contract takes a 2% fee  
+  - 1% → reward pool  
+  - 1% → owner profit  
+- You get **98%** credited as deposit
+- Rewards start immediately
 
-2. **Earn Rewards**
-   - Rewards accrue continuously based on your deposit amount
-   - Calculated as: `(deposit × 1% × time) / 1 year`
-   - After 30 days, you can claim or withdraw rewards
+------
 
-3. **Withdraw**
-   - Withdraw your deposit anytime (no lock)
-   - Withdraw rewards after 30-day lock period
-   - Can withdraw deposit + rewards together
+### 2. Earn Rewards Over Time
+Rewards accrue continuously:
 
-### For Owner
+freshRewards = (deposit * rewardRate * timeElapsed) / (10000 * 365 days)
 
-- **Profit**: Earns 1% on all user deposits automatically
-- **Manage Reward Pool**: Can add funds to boost rewards
-- **Adjust Rates**: Can change the reward rate (default 1% APR)
-- **Withdraw Profits**: Can withdraw earned fees from owner balance
-- **Protected**: Cannot withdraw committed user rewards
+
+Rewards consist of:
+- **Fresh rewards** (calculated live)
+- **Accumulated (committed) rewards**
+
+Rewards stop generating once deposit = 0.
+
+---
+
+### 3. Withdraw ETH
+
+Under **Model B withdrawal logic**:
+
+| Withdrawal Type | What Happens | Rewards? |
+|-----------------|--------------|----------|
+| `amount < deposit` | Only deposit reduces | Rewards untouched |
+| `amount == deposit` | Full principal withdrawn | Rewards remain & stay claimable |
+| `amount > deposit` | Deposit + rewards used | Rewards must unlock first |
+
+This gives users maximum control while keeping the contract safe.
+
+---
+
+### 4. Claim Rewards (after 30 days)
+- Moves fresh rewards into stored rewards
+- Transfers **all** rewards to user
+- Deposit stays untouched
+- If deposit = 0 but the user has stored rewards, they **can still claim**, but no new rewards accumulate
+
+---
+
+## For Owner
+
+- Earns 1% on every deposit
+- Can adjust APR
+- Can fund the reward pool
+- Can withdraw **ownerBalance** (profit only)
+- Cannot take user deposits or user rewards  
+
+---
 
 ## Contract Architecture 🏗️
 
-```
 PiggyBank.sol
 ├── Constants
-│   ├── MIN_DEPOSIT_AMOUNT: 0.01 ETH
-│   ├── FEE_BASIS_POINTS: 200 (2%)
-│   └── MIN_LOCK_PERIOD: 30 days
+│   ├── MIN_DEPOSIT_AMOUNT     = 0.01 ETH
+│   ├── FEE_BASIS_POINTS       = 200 (2%)
+│   ├── MIN_LOCK_PERIOD        = 30 days
+│   └── SECONDS_PER_YEAR       = 365 days
 ├── State Variables
-│   ├── owner
-│   ├── ownerBalance (owner's profit)
-│   ├── rewardPool (funds for user rewards)
-│   ├── committedRewards (rewards owed to users)
-│   └── rewardRate (default: 100 = 1% APR)
-└── Functions
-    ├── User Functions
-    │   ├── deposit()
-    │   ├── withdraw(amount)
-    │   ├── claimRewards()
-    │   └── getUserBalance(user)
-    └── Owner Functions
-        ├── fundRewardPool()
-        ├── withdrawFromRewardPool(amount)
-        └── setRewardRate(rate)
-```
+│   ├── owner                  (immutable admin)
+│   ├── ownerBalance           (owner profits)
+│   ├── rewardPool             (pays rewards)
+│   └── rewardRate             (APR, default 1%)
+├── Struct Depositor
+│   ├── amount                 (principal)
+│   ├── depositTimestamp       (for lock)
+│   ├── lastRewardClaim        (reward checkpoint)
+│   └── accumulatedRewards     (committed rewards)
+└── Core Functions
+    ├── deposit()
+    ├── withdraw(amount)       // Model B logic
+    ├── claimRewards()
+    ├── getUserBalance(address)
+    └── calculateRewards(address)
 
-## Economics 💰
+### Deposit Fee Breakdown
 
-### Fee Structure
-- **Deposit Fee**: 2% of deposit amount
-  - 1% → Reward Pool (funds user rewards)
-  - 1% → Owner Balance (owner's profit)
+| Portion | Allocation |
+|--------|------------|
+| 1%     | rewardPool |
+| 1%     | ownerBalance |
 
-### Reward Calculation
-- **Rate**: 1% APR (adjustable by owner)
-- **Formula**: `rewards = (deposit × rewardRate × timeElapsed) / (10000 × SECONDS_PER_YEAR)`
-- **Example**: 10 ETH deposit for 1 year = 0.1 ETH reward
+---
+
+### Reward Calculation (default APR = 1%)
+
+rewards =
+(deposit * rewardRate * timeElapsed)
+/ (10000 * SECONDS_PER_YEAR)
+
+
+Example:
+- Deposit: 10 ETH  
+- APR: 1%  
+- One year → ~0.1 ETH reward
+
+---
 
 ### Sustainability
-With balanced 1% fee to pool and 1% reward rate:
-- 100 users deposit 10 ETH each
-- Total deposits: 980 ETH (after 2% fee)
-- Reward pool receives: 100 ETH
-- Annual rewards owed: ~98 ETH (1% of 980)
-- ✅ Sustainable with buffer
 
-## Installation & Setup 🛠️
+Reward pool grows from user deposits → **no inflation**.
+
+System stays sustainable if:
+- Reward rate isn’t too high  
+- Users deposit occasionally  
+- Owner occasionally funds reward pool  
+
+---
+
+# Installation & Setup 🛠️
 
 ### Prerequisites
 - [Foundry](https://book.getfoundry.sh/getting-started/installation)
@@ -144,130 +197,53 @@ forge script script/PiggyBankScript.s.sol:PiggyBankScript \
   --broadcast \
   --verify
 ```
+---
 
-## Usage Examples 📝
-
-### Using the Interaction Script
-
-The easiest way to interact with your deployed contract:
-
-```bash
-# Set your deployed contract address
-export PIGGYBANK_ADDRESS=0x5FbDB2315678afecb367f032d93F642f64180aa3
-
-# Run the interaction script (modify it to suit your needs)
-forge script script/InteractPiggyBank.s.sol:InteractPiggyBank \
-  --rpc-url http://localhost:8545 \
-  --broadcast
-```
-
-### Interact via Cast
-
-**Check minimum deposit**
-```bash
-cast call <PIGGYBANK_ADDRESS> "getMinDepositAmount()" --rpc-url <RPC_URL>
-```
-
-**Deposit ETH**
-```bash
-cast send <PIGGYBANK_ADDRESS> "deposit()" \
-  --value 1ether \
-  --private-key $PRIVATE_KEY \
-  --rpc-url <RPC_URL>
-```
-
-**Check your balance**
-```bash
-cast call <PIGGYBANK_ADDRESS> \
-  "getUserBalance(address)(uint256,uint256)" \
-  <YOUR_ADDRESS> \
-  --rpc-url <RPC_URL>
-```
-
-**Withdraw funds**
-```bash
-cast send <PIGGYBANK_ADDRESS> \
-  "withdraw(uint256)" \
-  500000000000000000 \
-  --private-key $PRIVATE_KEY \
-  --rpc-url <RPC_URL>
-```
-
-**Claim rewards (after 30 days)**
-```bash
-cast send <PIGGYBANK_ADDRESS> "claimRewards()" \
-  --private-key $PRIVATE_KEY \
-  --rpc-url <RPC_URL>
-```
-
-### Owner Functions
-
-**Fund reward pool**
-```bash
-cast send <PIGGYBANK_ADDRESS> "fundRewardPool()" \
-  --value 10ether \
-  --private-key $OWNER_PRIVATE_KEY \
-  --rpc-url <RPC_URL>
-```
-
-**Set reward rate to 2% APR**
-```bash
-cast send <PIGGYBANK_ADDRESS> \
-  "setRewardRate(uint256)" \
-  200 \
-  --private-key $OWNER_PRIVATE_KEY \
-  --rpc-url <RPC_URL>
-```
-
-**Withdraw owner profits**
-```bash
-cast send <PIGGYBANK_ADDRESS> \
-  "withdraw(uint256)" \
-  1000000000000000000 \
-  --private-key $OWNER_PRIVATE_KEY \
-  --rpc-url <RPC_URL>
-```
-
-## Security Features 🔒
+# Security Features 🔒
 
 1. **Minimum Lock Period**: Users cannot claim rewards until 30 days after first deposit
-2. **Protected Rewards**: Owner cannot withdraw committed user rewards
-3. **Separate Balances**: User deposits, owner balance, and reward pool tracked separately
+2. **No Reward Inflation**: Fresh rewards require active deposit
+3. **Owner Cannot Steal Rewards**: User deposits, owner balance, and reward pool tracked separately
 4. **Input Validation**: Minimum deposit amount, sufficient balance checks
 5. **Custom Errors**: Gas-efficient error handling
+
 
 ## Contract Functions Reference 📚
 
 ### User Functions
+## Contract Functions Reference 📚
 
-| Function | Description | Access |
-|----------|-------------|--------|
-| `deposit()` | Deposit ETH (min 0.01 ETH, 2% fee) | Anyone |
-| `withdraw(uint256 amount)` | Withdraw deposit + rewards | Depositors |
-| `claimRewards()` | Claim earned rewards only | Depositors (after 30 days) |
-| `getUserBalance(address)` | View deposit and rewards | Anyone |
-| `calculateRewards(address)` | Calculate earned rewards | Anyone |
-| `canClaimRewards(address)` | Check if eligible to claim | Anyone |
+### User Functions
+
+| Function | Description |
+|----------|-------------|
+| `deposit()` | Deposit ETH (2% fee applied) |
+| `withdraw(uint256 amount)` | Withdraw using **Model B** logic (deposit first, rewards if needed) |
+| `claimRewards()` | Claim all rewards (after 30-day lock) |
+| `getUserBalance(address user)` | Returns `(deposit, totalRewards)` |
+| `calculateRewards(address user)` | Returns total rewards (fresh + stored) |
+
+---
 
 ### Owner Functions
 
-| Function | Description | Access |
-|----------|-------------|--------|
-| `fundRewardPool()` | Add ETH to reward pool | Owner only |
-| `withdrawFromRewardPool(uint256)` | Withdraw uncommitted rewards | Owner only |
-| `setRewardRate(uint256)` | Adjust reward rate (basis points) | Owner only |
+| Function | Description |
+|----------|-------------|
+| `fundRewardPool()` | Add ETH to the reward pool |
+| `setRewardRate(uint256 rate)` | Adjust APR (in basis points) |
+| `getOwnerBalance()` | View owner's collected profits |
+| `withdrawOwner(uint256 amount)` | Withdraw only the owner's profit |
 
-### View Functions
+---
+
+### View Helpers
 
 | Function | Returns |
 |----------|---------|
-| `getBalance()` | Total contract balance |
-| `getMinDepositAmount()` | Minimum deposit (0.01 ETH) |
-| `getMinLockPeriod()` | Lock period in seconds (30 days) |
-| `owner()` | Contract owner address |
-| `rewardPool()` | Current reward pool balance |
-| `committedRewards()` | Total committed rewards |
-| `rewardRate()` | Current reward rate (basis points) |
+| `getMinDepositAmount()` | Minimum required deposit (0.01 ETH) |
+| `getMinLockPeriod()` | Lock duration (30 days) |
+| `getContractBalance()` | Total ETH held by the contract |
+| `canClaimRewards(address user)` | Returns `true` if user passed lock period |
 
 ## Testing 🧪
 
@@ -281,21 +257,21 @@ Run with verbosity:
 forge test -vvv
 ```
 
-Run specific test:
+Run a single test:
 ```bash
-forge test --match-test testDeposit
+forge test --match-test testWithdrawMoreThanDepositUsesRewards
 ```
 
 ## Gas Optimization ⚡
 
-- Uses custom errors instead of revert strings
-- Minimal storage variables
-- Efficient reward calculation
-- No loops or unbounded operations
+- Custom errors (cheap reverts)
+- No loops
+- Efficient reward math
+- Uses storage writes minimally
+- No redundant state tracking
 
 ## Future Improvements 🚧
 
-- [ ] Add tests
 - [ ] Add events for all state changes
 - [ ] Implement emergency pause mechanism
 - [ ] Add compound interest option
@@ -303,6 +279,7 @@ forge test --match-test testDeposit
 - [ ] Tiered reward rates based on deposit amount
 - [ ] Referral system
 - [ ] Governance for reward rate changes
+- [ ] On-chain analytics
 
 ## License 📄
 
@@ -310,11 +287,12 @@ UNLICENSED
 
 ## Contributing 🤝
 
-Contributions are welcome! Please open an issue or submit a pull request.
+PRs welcome! This is a learning-first project — if you break it, we can fix it together 🫶
 
 ## Disclaimer ⚠️
 
-This contract is for educational purposes. It has not been audited. Use at your own risk. Always conduct thorough testing and auditing before deploying to mainnet.
+This contract is for educational use. Not audited.
+Do not deposit real money unless you enjoy pain.
 
 ---
 
