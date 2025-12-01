@@ -111,7 +111,6 @@ contract PiggyBank {
     }
 
     /**
-     * Model B:
      * - If amount <= deposit: withdraw only from deposit, rewards untouched
      * - If amount > deposit: use all deposit + (amount - deposit) from rewards
      */
@@ -130,48 +129,55 @@ contract PiggyBank {
             revert CannotWithdrawMoreThanAvailable();
         }
 
-        uint256 fromDeposit;
-        uint256 fromRewards;
+        // Case 1: partial withdraw, ONLY from deposit
+        if (amount < userDeposit) {
+            dep.amount = userDeposit - amount;
+            // rewards untouched, lastRewardClaim untouched
+            payable(msg.sender).transfer(amount);
+            return;
+        }
 
-        // Withdraw only from deposit if possible
-        if (amount <= userDeposit) {
-            fromDeposit = amount;
-            fromRewards = 0;
-        } else {
-            // Not enough in deposit -> need to use rewards as well
-            fromDeposit = userDeposit;
-            fromRewards = amount - userDeposit;
-
-            // Using rewards → must respect lock period
-            if (block.timestamp < dep.depositTimestamp + MIN_LOCK_PERIOD) {
-                revert MinimumLockPeriodNotMet();
-            }
-
-            // Bring fresh rewards into accumulatedRewards
+        // Case 2: withdraw EXACT full deposit, rewards stay accrued
+        if (amount == userDeposit) {
+            // finalize rewards up to now and store them
             uint256 freshRewards = _calculateFreshRewards(msg.sender);
             dep.accumulatedRewards += freshRewards;
             dep.lastRewardClaim = block.timestamp;
 
-            // Now total user rewards = accumulatedRewards
-            if (fromRewards > dep.accumulatedRewards) {
-                // Should not happen if totalAvailable check was correct,
-                // but we keep this as a safety check.
-                revert CannotWithdrawMoreThanAvailable();
-            }
+            dep.amount = 0; // no more principal
 
-            if (fromRewards > rewardPool) {
-                revert InsufficientRewardPool();
-            }
-
-            dep.accumulatedRewards -= fromRewards;
-            rewardPool -= fromRewards;
+            // we do NOT touch rewardPool or accumulatedRewards here
+            // → rewards remain visible via getUserBalance / claimRewards
+            payable(msg.sender).transfer(amount);
+            return;
         }
 
-        // Update deposit balance (only deposit part)
-        dep.amount = userDeposit - fromDeposit;
+        // Case 3: amount > deposit → consume deposit + some rewards
+        // at this point we know amount > userDeposit
+        uint256 fromDeposit = userDeposit;
+        uint256 fromRewards = amount - userDeposit;
 
-        // If we only touched deposit (amount <= deposit), we intentionally
-        // do NOT update lastRewardClaim, so rewards keep accruing smoothly.
+        // using rewards → must respect lock period
+        if (block.timestamp < dep.depositTimestamp + MIN_LOCK_PERIOD) {
+            revert MinimumLockPeriodNotMet();
+        }
+
+        // commit fresh rewards
+        uint256 freshRewards2 = _calculateFreshRewards(msg.sender);
+        dep.accumulatedRewards += freshRewards2;
+        dep.lastRewardClaim = block.timestamp;
+
+        if (fromRewards > dep.accumulatedRewards) {
+            revert CannotWithdrawMoreThanAvailable();
+        }
+        if (fromRewards > rewardPool) {
+            revert InsufficientRewardPool();
+        }
+
+        dep.accumulatedRewards -= fromRewards;
+        rewardPool -= fromRewards;
+
+        dep.amount = 0; // we used all deposit in this branch
 
         payable(msg.sender).transfer(amount);
     }
