@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
 import {PiggyBank} from "../src/PiggyBank.sol";
+
 contract PiggyBankTest is Test {
     PiggyBank public piggyBank;
     address OWNER = makeAddr("owner");
@@ -110,7 +111,7 @@ contract PiggyBankTest is Test {
         piggyBank.deposit{value: 0.1 ether}();
         uint256 withdrawAmount = 0.05 ether;
         piggyBank.withdraw(withdrawAmount);
-        (uint256 deposit, ) = piggyBank.getUserBalance(user);
+        (uint256 deposit,) = piggyBank.getUserBalance(user);
         uint256 fee = (0.1 ether * FEE_BASIS_POINTS) / 10000;
         uint256 netDeposit = 0.1 ether - fee;
         assertEq(deposit, netDeposit - withdrawAmount);
@@ -165,8 +166,7 @@ contract PiggyBankTest is Test {
 
         // Expected reward
         uint256 timeElapsed = 30 days;
-        uint256 expectedRewards = (userDeposit * rewardRate * timeElapsed) /
-            (10000 * SECONDS_PER_YEAR);
+        uint256 expectedRewards = (userDeposit * rewardRate * timeElapsed) / (10000 * SECONDS_PER_YEAR);
 
         assertApproxEqAbs(rewards, expectedRewards, 1); // 1 wei tolerance
     }
@@ -193,22 +193,13 @@ contract PiggyBankTest is Test {
         uint256 rewardRate = piggyBank.rewardRate();
 
         // Calculate expected rewards
-        uint256 firstDeposit = 0.1 ether -
-            (0.1 ether * FEE_BASIS_POINTS) /
-            10000;
-        uint256 secondDeposit = 0.2 ether -
-            (0.2 ether * FEE_BASIS_POINTS) /
-            10000;
+        uint256 firstDeposit = 0.1 ether - (0.1 ether * FEE_BASIS_POINTS) / 10000;
+        uint256 secondDeposit = 0.2 ether - (0.2 ether * FEE_BASIS_POINTS) / 10000;
 
-        uint256 rewardsFromFirstDeposit = (firstDeposit *
-            rewardRate *
-            30 days) / (10000 * SECONDS_PER_YEAR);
-        uint256 rewardsFromSecondDeposit = (secondDeposit *
-            rewardRate *
-            15 days) / (10000 * SECONDS_PER_YEAR);
+        uint256 rewardsFromFirstDeposit = (firstDeposit * rewardRate * 30 days) / (10000 * SECONDS_PER_YEAR);
+        uint256 rewardsFromSecondDeposit = (secondDeposit * rewardRate * 15 days) / (10000 * SECONDS_PER_YEAR);
 
-        uint256 expectedRewards = rewardsFromFirstDeposit +
-            rewardsFromSecondDeposit;
+        uint256 expectedRewards = rewardsFromFirstDeposit + rewardsFromSecondDeposit;
 
         assertApproxEqAbs(rewards, expectedRewards, 1); // 1 wei tolerance
         assertEq(userDeposit, firstDeposit + secondDeposit);
@@ -262,9 +253,7 @@ contract PiggyBankTest is Test {
         piggyBank.withdraw(userDeposit);
 
         // After withdrawal, check that deposit is zero but rewards remain
-        (uint256 finalDeposit, uint256 finalRewards) = piggyBank.getUserBalance(
-            user
-        );
+        (uint256 finalDeposit, uint256 finalRewards) = piggyBank.getUserBalance(user);
         assertEq(finalDeposit, 0);
         assertEq(finalRewards, rewards);
         vm.stopPrank();
@@ -283,9 +272,7 @@ contract PiggyBankTest is Test {
         vm.stopPrank();
     }
 
-    function testWithdrawWhenAmountExceedsDepositButCanObtainFromRewards()
-        public
-    {
+    function testWithdrawWhenAmountExceedsDepositButCanObtainFromRewards() public {
         address user = makeAddr("user");
         vm.deal(user, 1 ether);
         vm.startPrank(user);
@@ -304,9 +291,7 @@ contract PiggyBankTest is Test {
         piggyBank.withdraw(withdrawAmount);
 
         // After withdrawal, check that deposit is zero and rewards reduced accordingly
-        (uint256 finalDeposit, uint256 finalRewards) = piggyBank.getUserBalance(
-            user
-        );
+        (uint256 finalDeposit, uint256 finalRewards) = piggyBank.getUserBalance(user);
         assertEq(finalDeposit, 0);
         assertEq(finalRewards, rewards - (withdrawAmount - userDeposit));
         vm.stopPrank();
@@ -328,9 +313,7 @@ contract PiggyBankTest is Test {
         vm.stopPrank();
     }
 
-    function testWithdrawUsingRewardsWithInsufficientRewardPoolReverts()
-        public
-    {
+    function testWithdrawUsingRewardsWithInsufficientRewardPoolReverts() public {
         address user = makeAddr("user");
         vm.deal(user, 10 ether);
         vm.startPrank(OWNER);
@@ -359,11 +342,7 @@ contract PiggyBankTest is Test {
         uint256 amount = userDeposit + fromRewards;
 
         // Just to be safe:
-        assertLe(
-            amount,
-            userDeposit + rewards,
-            "amount must be <= totalAvailable"
-        );
+        assertLe(amount, userDeposit + rewards, "amount must be <= totalAvailable");
 
         vm.startPrank(user);
         vm.expectRevert();
@@ -453,13 +432,12 @@ contract PiggyBankTest is Test {
 
         uint256 rewards = piggyBank.calculateRewards(user);
 
-        (uint256 userDeposit, ) = piggyBank.getUserBalance(user);
+        (uint256 userDeposit,) = piggyBank.getUserBalance(user);
 
         uint256 rewardRate = piggyBank.rewardRate();
 
         uint256 timeElapsed = 30 days;
-        uint256 expectedRewards = (userDeposit * rewardRate * timeElapsed) /
-            (10000 * SECONDS_PER_YEAR);
+        uint256 expectedRewards = (userDeposit * rewardRate * timeElapsed) / (10000 * SECONDS_PER_YEAR);
 
         assertApproxEqAbs(rewards, expectedRewards, 1); // 1 wei tolerance
         vm.stopPrank();

@@ -232,9 +232,7 @@ contract PiggyBank {
         return _getTotalRewards(user);
     }
 
-    function getUserBalance(
-        address user
-    ) public view returns (uint256 userDeposit, uint256 userRewards) {
+    function getUserBalance(address user) public view returns (uint256 userDeposit, uint256 userRewards) {
         userDeposit = depositors[user].amount;
         userRewards = _getTotalRewards(user);
     }
@@ -256,30 +254,22 @@ contract PiggyBank {
     }
 
     function canClaimRewards(address user) public view returns (bool) {
-        return
-            block.timestamp >=
-            depositors[user].depositTimestamp + MIN_LOCK_PERIOD;
+        return block.timestamp >= depositors[user].depositTimestamp + MIN_LOCK_PERIOD;
     }
 
     // ============ INTERNAL HELPERS ============
 
     function _getTotalRewards(address user) private view returns (uint256) {
-        return
-            depositors[user].accumulatedRewards + _calculateFreshRewards(user);
+        return depositors[user].accumulatedRewards + _calculateFreshRewards(user);
     }
 
-    function _calculateFreshRewards(
-        address user
-    ) private view returns (uint256) {
+    function _calculateFreshRewards(address user) private view returns (uint256) {
         // Return 0 if user has not deposited anything
         if (depositors[user].amount == 0) {
             return 0;
         }
 
-        uint256 timeElapsed = block.timestamp -
-            depositors[user].lastRewardClaim;
-        return
-            (depositors[user].amount * rewardRate * timeElapsed) /
-            (10000 * SECONDS_PER_YEAR);
+        uint256 timeElapsed = block.timestamp - depositors[user].lastRewardClaim;
+        return (depositors[user].amount * rewardRate * timeElapsed) / (10000 * SECONDS_PER_YEAR);
     }
 }
