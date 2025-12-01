@@ -9,11 +9,12 @@ contract PiggyBankScript is Script {
 
     function setUp() public {}
 
-    function run() public {
+    function run() public returns (PiggyBank) {
         vm.startBroadcast();
 
         piggyBank = new PiggyBank();
 
         vm.stopBroadcast();
+        return piggyBank;
     }
 }

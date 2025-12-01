@@ -1,4 +1,4 @@
-# PiggyBank 🐷
+# PiggyBank 🐷 (or you new fav pyramid scheme)
 
 A decentralized savings contract built with Solidity that allows users to deposit ETH, earn rewards over time, and withdraw their funds. The contract features a sustainable reward system funded by deposit fees, with built-in protections for fairness and security.
 
